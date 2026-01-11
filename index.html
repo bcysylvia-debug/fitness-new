@@ -2,504 +2,251 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>塔罗占卜工坊 </title>
+    <title>健身课程全周期管理 (至3月底)</title>
     <style>
         :root {
-            --primary-color: #e0c097;
-            --bg-gradient: radial-gradient(circle at center, #1a002a 0%, #050008 100%);
-            --card-back: repeating-linear-gradient(45deg, #4a2c5a, #4a2c5a 5px, #2a0c3a 5px, #2a0c3a 10px);
+            --bg: #f0f2f5;
+            --card-bg: #fff;
+            --planned-bg: #e3f2fd;
+            --planned-text: #1976d2;
+            --done-bg: #e8f5e9;
+            --done-text: #2e7d32;
+            --today-border: #ff5722;
+            --border-color: #eee;
         }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg); padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h2 { margin: 0 0 10px 0; color: #333; }
+        .header p { color: #666; font-size: 0.95em; }
 
-        body {
-            background: var(--bg-gradient);
-            color: var(--primary-color);
-            font-family: 'STKaiti', 'Georgia', serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 10px;
+        /* 状态统计栏 */
+        .stats { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .stat-box { flex: 1; background: #fafafa; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid var(--border-color); min-width: 100px; }
+        .stat-num { font-size: 1.5em; font-weight: bold; display: block; margin-bottom: 5px; }
+        .stat-label { font-size: 0.85em; color: #777; }
+        .c-blue { color: var(--planned-text); }
+        .c-green { color: var(--done-text); }
+
+        /* 日历网格 */
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .weekday-head { text-align: center; font-weight: bold; color: #888; padding: 10px 0; font-size: 0.9em; }
+        
+        .month-label { grid-column: 1 / -1; margin-top: 15px; margin-bottom: 5px; font-weight: bold; font-size: 1.1em; color: #444; padding-left: 5px; border-left: 4px solid #333; line-height: 1.2; }
+
+        .day { 
+            background: #fff; border: 1px solid var(--border-color); border-radius: 8px; 
+            min-height: 70px; padding: 6px; cursor: pointer; position: relative;
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: all 0.2s; select-user: none;
         }
+        .day:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); z-index: 2; border-color: #ddd; }
+        
+        /* 状态样式 */
+        .day[data-status="planned"] { background: var(--planned-bg); border-color: var(--planned-text); }
+        .day[data-status="done"] { background: var(--done-bg); border-color: var(--done-text); }
+        .day.is-today { border: 2px solid var(--today-border) !important; position: relative; }
+        .day.is-today::after { content: "今日"; position: absolute; top: -8px; right: -5px; background: var(--today-border); color: white; font-size: 0.7em; padding: 2px 6px; border-radius: 4px; }
 
-        h1 { text-shadow: 0 0 10px rgba(224, 192, 151, 0.5); margin: 15px 0 5px 0; }
+        .date-num { font-weight: 600; font-size: 1em; }
+        .class-info { font-size: 0.75em; font-weight: bold; text-align: right; margin-top: auto; }
+        .status-icon { position: absolute; top: 6px; right: 6px; font-size: 1.1em; }
 
-        /* 导航区 */
-        .main-nav, .sub-controls {
-            display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center;
-        }
+        .legend { margin-top: 20px; display: flex; gap: 20px; justify-content: center; font-size: 0.9em; color: #666; }
+        .legend span { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
 
-        .nav-btn {
-            background: rgba(90, 56, 117, 0.3);
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-            padding: 6px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 14px;
-        }
-
-        .nav-btn.active {
-            background: var(--primary-color);
-            color: #1a002a;
-        }
-
-        .action-btn {
-            background: linear-gradient(45deg, #5a3875, #8a58a8);
-            border: none;
-            color: white;
-            padding: 10px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            margin-bottom: 15px;
-        }
-
-        #status-bar { margin-bottom: 10px; color: #b893cc; height: 20px; font-size: 14px;}
-
-        /* === 牌桌区域 === */
-        /* 圣三角结果区 */
-        .result-container {
-            display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; width: 100%;
-        }
-
-        /* 自由翻牌 & 手动选牌区 (网格布局) */
-        #deck-grid {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;
-            max-width: 600px; margin-bottom: 20px; transition: all 0.3s;
-        }
-
-        /* 卡牌样式 */
-        .card-slot {
-            width: 45px; height: 75px; /* 默认小牌背 */
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s;
-            perspective: 1000px;
-        }
-
-        /* 自由模式下翻开的卡牌稍微大一点 */
-        .card-slot.flipped {
-            width: 90px; height: 155px;
-            margin: 5px;
-        }
-
-        .card-inner {
-            width: 100%; height: 100%;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.6s;
-        }
-
-        .card-slot.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
-
-        .card-front, .card-back-face {
-            width: 100%; height: 100%;
-            position: absolute;
-            backface-visibility: hidden;
-            border-radius: 5px;
-            border: 1px solid #5a3875;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-
-        .card-back-face {
-            background: var(--card-back);
-        }
-
-        .card-front {
-            background: #220033;
-            transform: rotateY(180deg);
-            display: flex; flex-direction: column;
-            overflow: hidden;
-        }
-
-        .card-front img { width: 100%; height: 100%; object-fit: cover; }
-        .reversed img { transform: rotate(180deg); }
-
-        /* 圣三角模式的大卡牌 */
-        .triangle-card {
-            display: flex; flex-direction: column; align-items: center;
-            animation: fadeIn 0.6s ease forwards; opacity: 0;
-        }
-        .triangle-img-wrap {
-            width: 105px; height: 180px; border: 2px solid var(--primary-color);
-            border-radius: 8px; overflow: hidden; background: #220033;
-            position: relative; display: flex; align-items: center; justify-content: center;
-        }
-        .triangle-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
-
-        .label { font-size: 14px; margin-bottom: 5px; color: #b893cc; font-weight: bold;}
-        .card-name { 
-            position: absolute; bottom: 0; width: 100%; 
-            background: rgba(0,0,0,0.7); color: white; 
-            font-size: 10px; text-align: center; padding: 2px 0;
-        }
-        .triangle-card .card-name { position: static; background: none; font-size: 13px; margin-top: 5px;}
-
-        /* YesNo 结果标签 */
-        .yn-result {
-            margin-top: 15px; text-align: center; 
-            background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px;
-            border: 1px solid #5a3875; width: 90%; max-width: 300px;
-        }
-        .yn-big-text { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-        .yn-desc { font-size: 14px; color: #ccc; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <h1>🔮 塔罗占卜工坊</h1>
-    
-    <div class="main-nav">
-        <button class="nav-btn active" id="tab-triangle" onclick="switchTab('triangle')">圣三角</button>
-        <button class="nav-btn" id="tab-free" onclick="switchTab('free')">自由无牌阵</button>
-        <button class="nav-btn" id="tab-yesno" onclick="switchTab('yesno')">Yes / No</button>
+<div class="container">
+    <div class="header">
+        <h2>🏋️ 健身课冲刺排期 (Jan - Mar)</h2>
+        <p>点击日期切换状态：空白 → 📅 计划 → ✅ 已完成</p>
     </div>
 
-    <div id="triangle-controls" class="sub-controls">
-        <button onclick="setTriangleMode('random')" id="btn-tri-rnd" class="nav-btn active">随机抽取</button>
-        <button onclick="setTriangleMode('manual')" id="btn-tri-man" class="nav-btn">亲自选牌</button>
+    <div class="stats">
+        <div class="stat-box">
+            <span class="stat-num" id="total-progress">0/36</span>
+            <span class="stat-label">总进度 (已完+计划)</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-num c-green" id="done-count">0</span>
+            <span class="stat-label">已完成课时</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-num c-blue" id="planned-count">0</span>
+            <span class="stat-label">待执行计划</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-num" id="days-left">0</span>
+            <span class="stat-label">距离3月31日天数</span>
+        </div>
     </div>
-    <button id="draw-btn" class="action-btn" onclick="executeTriangleDraw()">开始占卜</button>
 
-    <div id="status-bar">准备就绪</div>
+    <div id="calendar" class="calendar">
+        </div>
 
-    <div id="deck-grid"></div>
-
-    <div class="result-container" id="results"></div>
+    <div class="legend">
+        <span><div class="dot" style="background:var(--done-text)"></div> 已完成</span>
+        <span><div class="dot" style="background:var(--planned-text)"></div> 计划中</span>
+        <span><div class="dot" style="border:1px solid #ccc"></div> 休息日</span>
+    </div>
+</div>
 
 <script>
-    // 图片加速
-    const getFastImgUrl = (path) => `https://wsrv.nl/?url=https://upload.wikimedia.org/wikipedia/commons/${path}&w=220&output=webp`;
-
-    // === 数据定义 ===
-    // 基础78张牌数据
-    const tarotData = [
-        {id: 0, name: "0-愚者", path: "9/90/RWS_Tarot_00_Fool.jpg"},
-        {id: 1, name: "I-魔术师", path: "d/de/RWS_Tarot_01_Magician.jpg"},
-        {id: 2, name: "II-女教皇", path: "8/88/RWS_Tarot_02_High_Priestess.jpg"},
-        {id: 3, name: "III-皇后", path: "d/d2/RWS_Tarot_03_Empress.jpg"},
-        {id: 4, name: "IV-皇帝", path: "c/c3/RWS_Tarot_04_Emperor.jpg"},
-        {id: 5, name: "V-教皇", path: "8/8d/RWS_Tarot_05_Hierophant.jpg"},
-        {id: 6, name: "VI-恋人", path: "a/af/Tarot_VI_The_Lovers.jpg"},
-        {id: 7, name: "VII-战车", path: "9/9b/RWS_Tarot_07_Chariot.jpg"},
-        {id: 8, name: "VIII-力量", path: "f/f5/RWS_Tarot_08_Strength.jpg"},
-        {id: 9, name: "IX-隐士", path: "4/4d/RWS_Tarot_09_Hermit.jpg"},
-        {id: 10, name: "X-命运之轮", path: "3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg"},
-        {id: 11, name: "XI-正义", path: "e/e0/RWS_Tarot_11_Justice.jpg"},
-        {id: 12, name: "XII-倒吊人", path: "2/2b/RWS_Tarot_12_Hanged_Man.jpg"},
-        {id: 13, name: "XIII-死神", path: "d/d7/RWS_Tarot_13_Death.jpg"},
-        {id: 14, name: "XIV-节制", path: "f/f8/RWS_Tarot_14_Temperance.jpg"},
-        {id: 15, name: "XV-恶魔", path: "5/55/RWS_Tarot_15_Devil.jpg"},
-        {id: 16, name: "XVI-高塔", path: "5/53/RWS_Tarot_16_Tower.jpg"},
-        {id: 17, name: "XVII-星星", path: "d/db/RWS_Tarot_17_Star.jpg"},
-        {id: 18, name: "XVIII-月亮", path: "7/7f/RWS_Tarot_18_Moon.jpg"},
-        {id: 19, name: "XIX-太阳", path: "1/17/RWS_Tarot_19_Sun.jpg"},
-        {id: 20, name: "XX-审判", path: "d/dd/RWS_Tarot_20_Judgement.jpg"},
-        {id: 21, name: "XXI-世界", path: "f/ff/RWS_Tarot_21_World.jpg"},
-        // 小阿卡纳
-        {id: 22, name: "权杖一", path: "1/11/Wands01.jpg"}, {id: 23, name: "权杖二", path: "0/0f/Wands02.jpg"},
-        {id: 24, name: "权杖三", path: "f/ff/Wands03.jpg"}, {id: 25, name: "权杖四", path: "a/a4/Wands04.jpg"},
-        {id: 26, name: "权杖五", path: "9/9d/Wands05.jpg"}, {id: 27, name: "权杖六", path: "3/3b/Wands06.jpg"},
-        {id: 28, name: "权杖七", path: "e/e4/Wands07.jpg"}, {id: 29, name: "权杖八", path: "6/6b/Wands08.jpg"},
-        {id: 30, name: "权杖九", path: "e/e3/Wands09.jpg"}, {id: 31, name: "权杖十", path: "0/0b/Wands10.jpg"},
-        {id: 32, name: "权杖侍从", path: "6/6a/WandsPage.jpg"}, {id: 33, name: "权杖骑士", path: "1/16/WandsKnight.jpg"},
-        {id: 34, name: "权杖王后", path: "0/0d/WandsQueen.jpg"}, {id: 35, name: "权杖国王", path: "c/ce/WandsKing.jpg"},
-        {id: 36, name: "圣杯一", path: "3/36/Cups01.jpg"}, {id: 37, name: "圣杯二", path: "f/f8/Cups02.jpg"},
-        {id: 38, name: "圣杯三", path: "7/7a/Cups03.jpg"}, {id: 39, name: "圣杯四", path: "3/35/Cups04.jpg"},
-        {id: 40, name: "圣杯五", path: "d/d7/Cups05.jpg"}, {id: 41, name: "圣杯六", path: "1/17/Cups06.jpg"},
-        {id: 42, name: "圣杯七", path: "a/ae/Cups07.jpg"}, {id: 43, name: "圣杯八", path: "6/60/Cups08.jpg"},
-        {id: 44, name: "圣杯九", path: "2/24/Cups09.jpg"}, {id: 45, name: "圣杯十", path: "8/84/Cups10.jpg"},
-        {id: 46, name: "圣杯侍从", path: "a/a6/CupsPage.jpg"}, {id: 47, name: "圣杯骑士", path: "f/fa/CupsKnight.jpg"},
-        {id: 48, name: "圣杯王后", path: "6/61/CupsQueen.jpg"}, {id: 49, name: "圣杯国王", path: "f/f0/CupsKing.jpg"},
-        {id: 50, name: "宝剑一", path: "1/1a/Swords01.jpg"}, {id: 51, name: "宝剑二", path: "9/92/Swords02.jpg"},
-        {id: 52, name: "宝剑三", path: "2/2c/Swords03.jpg"}, {id: 53, name: "宝剑四", path: "b/bf/Swords04.jpg"},
-        {id: 54, name: "宝剑五", path: "2/23/Swords05.jpg"}, {id: 55, name: "宝剑六", path: "2/29/Swords06.jpg"},
-        {id: 56, name: "宝剑七", path: "3/34/Swords07.jpg"}, {id: 57, name: "宝剑八", path: "a/a7/Swords08.jpg"},
-        {id: 58, name: "宝剑九", path: "2/2f/Swords09.jpg"}, {id: 59, name: "宝剑十", path: "d/d4/Swords10.jpg"},
-        {id: 60, name: "宝剑侍从", path: "4/4c/SwordsPage.jpg"}, {id: 61, name: "宝剑骑士", path: "b/b0/SwordsKnight.jpg"},
-        {id: 62, name: "宝剑王后", path: "d/d4/SwordsQueen.jpg"}, {id: 63, name: "宝剑国王", path: "3/33/SwordsKing.jpg"},
-        {id: 64, name: "星币一", path: "f/fd/Pents01.jpg"}, {id: 65, name: "星币二", path: "9/9f/Pents02.jpg"},
-        {id: 66, name: "星币三", path: "4/42/Pents03.jpg"}, {id: 67, name: "星币四", path: "3/35/Pents04.jpg"},
-        {id: 68, name: "星币五", path: "9/96/Pents05.jpg"}, {id: 69, name: "星币六", path: "a/a6/Pents06.jpg"},
-        {id: 70, name: "星币七", path: "6/6a/Pents07.jpg"}, {id: 71, name: "星币八", path: "4/49/Pents08.jpg"},
-        {id: 72, name: "星币九", path: "f/f0/Pents09.jpg"}, {id: 73, name: "星币十", path: "4/42/Pents10.jpg"},
-        {id: 74, name: "星币侍从", path: "e/e0/PentsPage.jpg"}, {id: 75, name: "星币骑士", path: "c/c6/PentsKnight.jpg"},
-        {id: 76, name: "星币王后", path: "8/88/PentsQueen.jpg"}, {id: 77, name: "星币国王", path: "1/14/PentsKing.jpg"}
-    ];
-
-    // === Yes/No 规则配置 (共27张) ===
-    // 0-21: 大阿卡纳, 22:权杖1, 36:圣杯1, 50:宝剑1, 64:星币1, 44:圣杯9
-    const yesNoDeckIds = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21, 22,36,50,64, 44];
-    
-    // 规则映射
-    const ynRules = {
-        // 等待 (Aces)
-        22: {type: 'WAIT', text: '等待时间的安排'}, 
-        36: {type: 'WAIT', text: '等待时间的安排'}, 
-        50: {type: 'WAIT', text: '等待时间的安排'}, 
-        64: {type: 'WAIT', text: '等待时间的安排'},
-        
-        // 明确的是
-        44: {type: 'YES', text: '明确的 “是”'}, // 圣杯九
-        0: {type: 'YES', text: '明确的 “是”'}, // 愚者
-        1: {type: 'YES', text: '明确的 “是”'}, // 魔术师
-        3: {type: 'YES', text: '明确的 “是”'}, // 皇后
-        4: {type: 'YES', text: '明确的 “是”'}, // 皇帝
-        7: {type: 'YES', text: '明确的 “是”'}, // 战车
-        11: {type: 'YES', text: '明确的 “是”'}, // 正义
-        17: {type: 'YES', text: '明确的 “是”'}, // 星星
-        19: {type: 'YES', text: '明确的 “是”'}, // 太阳
-        21: {type: 'YES', text: '明确的 “是”'}, // 世界
-
-        // 明确的否
-        8: {type: 'NO', text: '明确的 “否”'}, // 力量
-        16: {type: 'NO', text: '明确的 “否”'}, // 高塔
-        14: {type: 'NO', text: '明确的 “否”'}, // 节制
-        9: {type: 'NO', text: '明确的 “否”'}, // 隐士
-        12: {type: 'NO', text: '明确的 “否”'}, // 倒吊人
-        13: {type: 'NO', text: '明确的 “否”'}, // 死神
-        15: {type: 'NO', text: '明确的 “否”'}, // 恶魔
-
-        // 直觉解答 (剩下的)
-        2: {type: 'OPEN', text: '不分是否，依直觉解答'}, 
-        10: {type: 'OPEN', text: '不分是否，依直觉解答'},
-        6: {type: 'OPEN', text: '不分是否，依直觉解答'},
-        5: {type: 'OPEN', text: '不分是否，依直觉解答'},
-        18: {type: 'OPEN', text: '不分是否，依直觉解答'},
-        20: {type: 'OPEN', text: '不分是否，依直觉解答'}
+    // 配置参数
+    const config = {
+        startDate: new Date(2026, 0, 1), // 从1月1日开始显示，方便您补录之前的记录
+        endDate: new Date(2026, 2, 31),  // 到3月31日
+        totalClasses: 36
     };
 
-    // === 全局状态 ===
-    let currentTab = 'triangle';
-    let triangleMode = 'random'; // random / manual
-    let manualChoices = []; // 圣三角手动选牌用
-    let shuffledIndices = []; // 存放当前洗好的牌序
-
-    // 初始化
-    function init() {
-        switchTab('triangle');
+    // 状态数据：key为日期字符串(YYYY-MM-DD), value为状态('planned' | 'done')
+    let classData = JSON.parse(localStorage.getItem('gymClassData_v2')) || {};
+    
+    // 初始化：如果没有任何数据，尝试根据用户描述预设今天
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (Object.keys(classData).length === 0) {
+        // 这是一个新用户，默认标记今天为"已完成"
+        // 您可以手动点击过去的日期来补全前15节课
+        classData[todayStr] = 'done';
     }
 
-    // === 导航切换 ===
-    function switchTab(tab) {
-        currentTab = tab;
-        
-        // 更新按钮状态
-        document.querySelectorAll('.main-nav .nav-btn').forEach(b => {
-            if (b.id.startsWith('tab-')) b.classList.remove('active');
-        });
-        document.getElementById(`tab-${tab}`).classList.add('active');
+    const calendarEl = document.getElementById('calendar');
 
-        // 清理界面
-        document.getElementById('deck-grid').innerHTML = '';
-        document.getElementById('results').innerHTML = '';
-        document.getElementById('triangle-controls').style.display = 'none';
-        document.getElementById('draw-btn').style.display = 'none';
-
-        // 模式初始化
-        if (tab === 'triangle') {
-            document.getElementById('triangle-controls').style.display = 'flex';
-            document.getElementById('draw-btn').style.display = 'inline-block';
-            setTriangleMode('random');
-        } 
-        else if (tab === 'free') {
-            initFreeMode();
-        }
-        else if (tab === 'yesno') {
-            initYesNoMode();
-        }
+    function getStatusIcon(status) {
+        if (status === 'done') return '✅';
+        if (status === 'planned') return '📅';
+        return '';
     }
 
-    // === 功能一：圣三角逻辑 ===
-    function setTriangleMode(mode) {
-        triangleMode = mode;
-        document.getElementById('btn-tri-rnd').classList.toggle('active', mode === 'random');
-        document.getElementById('btn-tri-man').classList.toggle('active', mode === 'manual');
-        
-        const btn = document.getElementById('draw-btn');
-        const deck = document.getElementById('deck-grid');
-        const status = document.getElementById('status-bar');
-
-        document.getElementById('results').innerHTML = '';
-
-        if (mode === 'random') {
-            btn.style.display = 'inline-block';
-            deck.style.display = 'none';
-            status.innerText = '点击按钮随机抽取 3 张';
+    function toggleDate(dateStr) {
+        const current = classData[dateStr];
+        if (!current) {
+            classData[dateStr] = 'planned';
+        } else if (current === 'planned') {
+            classData[dateStr] = 'done';
         } else {
-            btn.style.display = 'none';
-            deck.style.display = 'flex';
-            status.innerText = '请从下方选取 3 张牌...';
-            renderBackDeck(78, (idx) => manualPickTriangle(idx));
-            manualChoices = [];
-            shuffledIndices = shuffle(Array.from({length: 78}, (_, i) => i));
+            delete classData[dateStr];
         }
+        saveAndRender();
     }
 
-    function executeTriangleDraw() {
-        // 随机模式直接抽
-        const indices = shuffle(Array.from({length: 78}, (_, i) => i)).slice(0, 3);
-        renderTriangleResult(indices);
+    function saveAndRender() {
+        localStorage.setItem('gymClassData_v2', JSON.stringify(classData));
+        render();
     }
 
-    function manualPickTriangle(uiIdx) {
-        if (manualChoices.length >= 3) return;
+    function render() {
+        calendarEl.innerHTML = '';
         
-        // 视觉选中
-        const cards = document.querySelectorAll('.card-slot');
-        if (cards[uiIdx].style.visibility === 'hidden') return;
-        cards[uiIdx].style.visibility = 'hidden';
-
-        // 记录逻辑选中
-        manualChoices.push(shuffledIndices[uiIdx]);
-        document.getElementById('status-bar').innerText = `已选 ${manualChoices.length} / 3`;
-
-        if (manualChoices.length === 3) {
-            document.getElementById('deck-grid').style.display = 'none'; // 选完隐藏牌堆
-            renderTriangleResult(manualChoices);
-        }
-    }
-
-    function renderTriangleResult(indices) {
-        const container = document.getElementById('results');
-        container.innerHTML = '';
-        document.getElementById('status-bar').innerText = '过去 · 现在 · 未来';
-
-        indices.forEach((idx, i) => {
-            const data = tarotData[idx];
-            const isRev = Math.random() > 0.5;
-            const labels = ['Past / 过去', 'Present / 现在', 'Future / 未来'];
-            
-            const div = document.createElement('div');
-            div.className = 'triangle-card';
-            div.style.animationDelay = `${i * 0.2}s`;
-            div.innerHTML = `
-                <div class="label">${labels[i]}</div>
-                <div class="triangle-img-wrap ${isRev ? 'reversed' : ''}">
-                    <img src="${getFastImgUrl(data.path)}">
-                    <div class="card-name">${data.name} ${isRev ? '(逆)' : ''}</div>
-                </div>
-            `;
-            container.appendChild(div);
+        // 生成表头
+        const weeks = ['日', '一', '二', '三', '四', '五', '六'];
+        weeks.forEach(w => {
+            const el = document.createElement('div');
+            el.className = 'weekday-head';
+            el.innerText = w;
+            calendarEl.appendChild(el);
         });
-    }
 
-    // === 功能二：自由无牌阵 (原地翻牌) ===
-    function initFreeMode() {
-        document.getElementById('status-bar').innerText = '自由牌桌：点击任意牌背即可翻开';
-        document.getElementById('deck-grid').style.display = 'flex';
-        
-        // 渲染78张牌，点击直接原地翻开
-        // 先洗牌，把 ID 映射到 UI 位置上
-        shuffledIndices = shuffle(Array.from({length: 78}, (_, i) => i));
-        renderBackDeck(78, (uiIdx, slot) => flipCardInPlace(uiIdx, slot, shuffledIndices));
-    }
+        // 整理所有被选中的日期，用于排序计算“第几节”
+        const sortedDates = Object.keys(classData).sort();
+        const dateIndexMap = {}; // 存储每个日期对应是第几节课
+        sortedDates.forEach((date, index) => {
+            dateIndexMap[date] = index + 1;
+        });
 
-    function flipCardInPlace(uiIdx, slotElement, indexMap) {
-        if (slotElement.classList.contains('flipped')) return;
+        // 渲染日历主体
+        let current = new Date(config.startDate);
+        let currentMonth = -1;
 
-        const realCardIdx = indexMap[uiIdx];
-        const data = tarotData[realCardIdx];
-        const isRev = Math.random() > 0.5;
+        while (current <= config.endDate) {
+            const year = current.getFullYear();
+            const month = current.getMonth();
+            const dateStr = current.toISOString().split('T')[0];
+            const dayNum = current.getDate();
+            const dayOfWeek = current.getDay();
 
-        // 注入正面 HTML
-        const frontDiv = slotElement.querySelector('.card-front');
-        frontDiv.innerHTML = `
-            <img src="${getFastImgUrl(data.path)}" class="${isRev ? 'reversed' : ''}">
-            <div class="card-name">${data.name} ${isRev ? '(逆)' : ''}</div>
-        `;
+            // 如果换月了，插入月份标题
+            if (month !== currentMonth) {
+                currentMonth = month;
+                
+                // 插入月份行
+                const monthDiv = document.createElement('div');
+                monthDiv.className = 'month-label';
+                monthDiv.innerText = `${year}年 ${month + 1}月`;
+                
+                // 如果不是第一行，需要让月份独占一行，但Grid布局里直接插中间有点麻烦
+                // 这里采用简单的流式处理：先强制换行，但grid不需要. 
+                // 为了美观，我们把月份标签放在grid里并占满一行
+                // 如果当前行不是周日开头，需要填补空白格子直到本行结束，再放月份？
+                // 简化方案：直接插入月份Label占满7格
+                // 换月时，如果是新的一行开头最好，如果不是，先补齐上一行的空白
+                
+                // 为了布局简单，我们允许月份标签插在中间，
+                // 但需要先补齐上一月剩余的空白格子
+                const lastDayOfPrevMonth = new Date(current);
+                lastDayOfPrevMonth.setDate(0); // 上月最后一天
+                const prevMonthEndDay = lastDayOfPrevMonth.getDay();
+                
+                // 这里的逻辑稍微复杂，为了代码简洁，我们只在每月1号前插入月份头
+                // 并在每月1号前补齐该周的空白
+                
+                calendarEl.appendChild(monthDiv);
+                
+                // 补齐当月1号之前的空白
+                for(let i=0; i<dayOfWeek; i++) {
+                    calendarEl.appendChild(document.createElement('div'));
+                }
+            }
 
-        slotElement.classList.add('flipped');
-    }
+            const el = document.createElement('div');
+            el.className = 'day';
+            const status = classData[dateStr];
+            if (status) el.setAttribute('data-status', status);
+            
+            // 判断是否今天
+            if (dateStr === todayStr) el.classList.add('is-today');
 
-    // === 功能三：Yes/No 定制版 ===
-    function initYesNoMode() {
-        document.getElementById('status-bar').innerText = 'Yes/No 抉择：请凭直觉点击一张 (共27张)';
-        document.getElementById('deck-grid').style.display = 'flex';
-        
-        // 准备 27 张牌的索引
-        const deck27 = [...yesNoDeckIds];
-        shuffledIndices = shuffle(deck27);
+            // 课程编号
+            let classNumText = '';
+            if (status) {
+                classNumText = `第${dateIndexMap[dateStr]}节`;
+            }
 
-        renderBackDeck(27, (uiIdx) => pickYesNo(uiIdx));
-    }
-
-    function pickYesNo(uiIdx) {
-        // 选中一张后，清理桌面，显示结果
-        const realId = shuffledIndices[uiIdx];
-        const data = tarotData[realId];
-        const rule = ynRules[realId];
-        
-        // 清空牌桌
-        document.getElementById('deck-grid').innerHTML = '';
-        
-        // 显示大图和结果
-        const container = document.getElementById('results');
-        
-        // 颜色判定
-        let color = '#ccc';
-        if(rule.type === 'YES') color = '#4caf50';
-        if(rule.type === 'NO') color = '#f44336';
-        if(rule.type === 'WAIT') color = '#ff9800';
-        if(rule.type === 'OPEN') color = '#9c27b0';
-
-        container.innerHTML = `
-            <div class="triangle-card" style="opacity:1">
-                <div class="triangle-img-wrap">
-                    <img src="${getFastImgUrl(data.path)}">
-                </div>
-                <div class="label" style="margin-top:10px">${data.name}</div>
-            </div>
-            <div class="yn-result" style="border-color:${color}">
-                <div class="yn-big-text" style="color:${color}">${rule.type === 'WAIT' || rule.type === 'OPEN' ? 'Hint' : rule.type}</div>
-                <div class="yn-desc">${rule.text}</div>
-            </div>
-            <button class="nav-btn" style="margin-top:20px" onclick="initYesNoMode()">再抽一次</button>
-        `;
-        document.getElementById('status-bar').innerText = '解读完成';
-    }
-
-
-    // === 通用工具 ===
-    // 渲染牌背网格
-    function renderBackDeck(count, clickHandler) {
-        const deck = document.getElementById('deck-grid');
-        deck.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'card-slot';
-            slot.innerHTML = `
-                <div class="card-inner">
-                    <div class="card-back-face"></div>
-                    <div class="card-front"></div>
-                </div>
+            el.innerHTML = `
+                <div class="date-num">${dayNum}</div>
+                ${status ? `<div class="status-icon">${getStatusIcon(status)}</div>` : ''}
+                <div class="class-info" style="color:${status==='planned'?'var(--planned-text)':'var(--done-text)'}">${classNumText}</div>
             `;
-            // 绑定点击
-            slot.onclick = () => clickHandler(i, slot);
-            deck.appendChild(slot);
+
+            el.onclick = () => toggleDate(dateStr);
+            calendarEl.appendChild(el);
+
+            current.setDate(current.getDate() + 1);
         }
+
+        updateStats(sortedDates.length);
     }
 
-    // 洗牌算法
-    function shuffle(array) {
-        let currentIndex = array.length, randomIndex;
-        while (currentIndex != 0) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex--;
-            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-        }
-        return array;
+    function updateStats(totalPlannedAndDone) {
+        const doneCount = Object.values(classData).filter(s => s === 'done').length;
+        const plannedCount = Object.values(classData).filter(s => s === 'planned').length;
+        
+        document.getElementById('total-progress').innerText = `${totalPlannedAndDone}/${config.totalClasses}`;
+        document.getElementById('done-count').innerText = doneCount;
+        document.getElementById('planned-count').innerText = plannedCount;
+        
+        const now = new Date();
+        const end = config.endDate;
+        const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+        document.getElementById('days-left').innerText = diff > 0 ? diff : 0;
     }
 
-    window.onload = init;
+    render();
 </script>
 </body>
 </html>
